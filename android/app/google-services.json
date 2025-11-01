@@ -1,3 +1,4 @@
+
 {
   "project_info": {
     "project_number": "345861978832",
@@ -12,7 +13,20 @@
           "package_name": "com.tko.tkotoylogin"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "345861978832-si4ehost35d3i0tnhfjql5n3i7ph8ln4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tko.tkotoylogin",
+            "certificate_hash": "bcc009bbe3ff5dddbe9c091d564893655a5f98ef"
+          }
+        },
+        {
+          "client_id": "345861978832-8pmdu8m6gkt8mh8lqoa77kf4tnt08mca.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCcVdKEleSw5naZ-K28NIea7o_oSquIieE"
@@ -20,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "345861978832-8pmdu8m6gkt8mh8lqoa77kf4tnt08mca.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "345861978832-mefo7hbp77r5f4sa8iedj05t0p7086l1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tkotoylogin"
+              }
+            }
+          ]
         }
       }
     }

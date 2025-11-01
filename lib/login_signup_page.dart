@@ -140,7 +140,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           children: [
                             // Use your asset logo
                             // Make sure it's declared in pubspec.yaml (assets/branding/tko_logo.png)
-                            Image.asset('assets/branding/tko_logo.png', height: 68),
+                            Image.asset('C:\Users\joypa\StudioProjects\tkotoylogin\assets\branding\tko_logo1.png', height: 68),
                             const SizedBox(height: 10),
                             Text('TKO TOY',
                               style: textTheme.headlineSmall?.copyWith(

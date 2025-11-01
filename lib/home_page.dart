@@ -5,12 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-/// TKO brand
+/// ----------------------
+/// TKO brand colors
+/// ----------------------
 const tkoOrange = Color(0xFFFF6A00);
-const tkoCream  = Color(0xFFF7F2EC);
-const tkoBrown  = Color(0xFF6A3B1A);
-const tkoTeal   = Color(0xFF00B8A2);
-const tkoGold   = Color(0xFFFFD23F);
+const tkoCream = Color(0xFFF7F2EC);
+const tkoBrown = Color(0xFF6A3B1A);
+const tkoTeal = Color(0xFF00B8A2);
+const tkoGold = Color(0xFFFFD23F);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,7 +21,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int index = 0;
+  int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -32,20 +34,21 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(['Home', 'Scan', 'Discover', 'Profile'][index]),
+        title: Text(const ['Home', 'Scan', 'Discover', 'Profile'][_tab]),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
-          if (index == 0)
-            IconButton(
-              tooltip: 'Notifications',
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none),
-            ),
+          if (_tab == 0) ...[
+            IconButton(icon: const Icon(Icons.card_giftcard_outlined), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.person_outline), onPressed: () {}),
+          ]
         ],
       ),
-      body: SafeArea(child: pages[index]),
+      body: SafeArea(child: pages[_tab]),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => index = i),
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.qr_code_2_outlined), selectedIcon: Icon(Icons.qr_code_2), label: 'Scan'),
@@ -58,46 +61,19 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// ------- Firestore helpers -------
-
-class _Tier {
-  final String name;
-  final int min;
-  _Tier(this.name, this.min);
-
-  factory _Tier.fromMap(Map<String, dynamic> m) =>
-      _Tier(m['name'] as String, (m['min'] as num).toInt());
-}
-
-Stream<DocumentSnapshot<Map<String, dynamic>>> _settings$() =>
-    FirebaseFirestore.instance.doc('settings/general').snapshots();
-
-Stream<DocumentSnapshot<Map<String, dynamic>>> _user$() {
-  final uid = FirebaseAuth.instance.currentUser!.uid;
-  return FirebaseFirestore.instance.doc('users/$uid').snapshots();
-}
-
-/// Pick current tier by points
-_Tier _currentTier(List<_Tier> tiers, int points) {
-  _Tier cur = tiers.first;
-  for (final t in tiers) {
-    if (points >= t.min) cur = t;
-  }
-  return cur;
-}
-
-/// Find next threshold (min points for the next tier)
-int? _nextThreshold(List<_Tier> tiers, int points) {
-  for (final t in tiers) {
-    if (points < t.min) return t.min;
-  }
-  return null;
-}
-
-/// ------- Home Tab -------
-
+/// =========================
+/// HOME
+/// =========================
 class _HomeTab extends StatelessWidget {
   const _HomeTab();
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _settings$() =>
+      FirebaseFirestore.instance.doc('settings/general').snapshots();
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _user$() {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    return FirebaseFirestore.instance.doc('users/$uid').snapshots();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,55 +87,66 @@ class _HomeTab extends StatelessWidget {
           child: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment(-1, -1), end: Alignment(1, 1),
+                begin: Alignment(-1, -1),
+                end: Alignment(1, 1),
                 colors: [Colors.white, tkoCream],
-                stops: [0.1, 1.0],
               ),
             ),
           ),
         ),
-        Positioned(left: -90, top: -80, child: _bubble(240, tkoOrange.withOpacity(.12))),
-        Positioned(right: -70, bottom: -40, child: _bubble(200, tkoTeal.withOpacity(.10))),
-        Positioned(right: 16, top: 96, child: _bubble(72, tkoGold.withOpacity(.16))),
+        Positioned(left: -90, top: -80, child: _bubble(220, tkoOrange.withOpacity(.10))),
+        Positioned(right: -70, bottom: -40, child: _bubble(180, tkoTeal.withOpacity(.10))),
+        Positioned(right: 16, top: 100, child: _bubble(70, tkoGold.withOpacity(.15))),
 
-        // content
-        StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        // data
+        StreamBuilder(
           stream: _settings$(),
-          builder: (context, settingsSnap) {
-            if (!settingsSnap.hasData) {
-              return const Center(child: CircularProgressIndicator());
+          builder: (context, sSnap) {
+            if (!sSnap.hasData) {
+              return const Center(child: CircularProgressIndicator(color: tkoBrown));
             }
-            final settings = settingsSnap.data!.data() ?? {};
-            final tiersRaw = (settings['tiers'] as List? ?? [])
+
+            final settings = sSnap.data!.data() ?? {};
+
+            final tiers = (settings['tiers'] as List? ?? [])
                 .map((e) => _Tier.fromMap(Map<String, dynamic>.from(e)))
                 .toList()
               ..sort((a, b) => a.min.compareTo(b.min));
 
-            if (tiersRaw.isEmpty) {
-              return const Center(child: Text('No tier settings found.'));
-            }
+            final perks = (settings['perks'] as List? ?? [])
+                .map((e) => _Perk.fromMap(Map<String, dynamic>.from(e)))
+                .toList();
 
-            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            final discountsMap = Map<String, dynamic>.from(settings['discounts'] ?? {});
+            final earnMultipliers = Map<String, dynamic>.from(settings['earnMultipliers'] ?? {});
+
+            return StreamBuilder(
               stream: _user$(),
-              builder: (context, userSnap) {
-                if (!userSnap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+              builder: (context, uSnap) {
+                if (!uSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator(color: tkoBrown));
+                }
+                // ensure doc exists
+                if (!uSnap.data!.exists) {
+                  FirebaseFirestore.instance
+                      .doc('users/${FirebaseAuth.instance.currentUser!.uid}')
+                      .set({'tier': 'Featherweight', 'yearPoints': 0, 'lifetimePts': 0}, SetOptions(merge: true));
+                  return const Center(child: CircularProgressIndicator(color: tkoBrown));
                 }
 
-                final u = userSnap.data!.data() ?? {};
+                final u = uSnap.data!.data()!;
                 final yearPts = (u['yearPoints'] ?? 0) as int;
-                final lifetimePts = (u['lifetimePts'] ?? 0) as int;
+                final lifetime = (u['lifetimePts'] ?? 0) as int;
 
-                // compute from settings
-                final current = _currentTier(tiersRaw, yearPts);
-                final nextMin = _nextThreshold(tiersRaw, yearPts);
-                final toNext = nextMin == null ? 0 : (nextMin - yearPts);
-                final progress =
-                nextMin == null ? 1.0 : (yearPts / nextMin).clamp(0, 1).toDouble();
+                final curTier = _currentTier(tiers, yearPts);
+                final nextThresh = _nextThreshold(tiers, yearPts);
+                final toNext = nextThresh == null ? 0 : (nextThresh - yearPts);
+                final progress = nextThresh == null ? 1.0 : (yearPts / nextThresh).clamp(0, 1).toDouble();
+                final earnX = ((earnMultipliers[curTier.name] ?? 1.0) as num).toDouble();
 
                 return CustomScrollView(
                   slivers: [
-                    // greeting
+                    // Greeting
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
@@ -183,22 +170,23 @@ class _HomeTab extends StatelessWidget {
                       ),
                     ),
 
-                    // Tier + points card
+                    // Tier card
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: _TierCard(
-                          tier: current.name,
+                          tier: curTier.name,
                           yearPoints: yearPts,
-                          toNextPoints: nextMin == null ? 0 : toNext,
+                          toNextPoints: toNext,
                           progress: progress,
-                          lifetimePts: lifetimePts,
+                          lifetimePts: lifetime,
+                          earnX: earnX,
                         ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-                    // Promo banner
+                    // Promo banner (Earn 200 Bonus Points)
                     const SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -213,23 +201,62 @@ class _HomeTab extends StatelessWidget {
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-                    // Shortcuts
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
-                      sliver: SliverGrid.count(
-                        crossAxisCount: 4,
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                        children: const [
-                          _Shortcut(icon: Icons.shopping_bag_outlined, label: 'Order'),
-                          _Shortcut(icon: Icons.stars_rounded, label: 'Rewards'),
-                          _Shortcut(icon: Icons.local_offer_outlined, label: 'Offers'),
-                          _Shortcut(icon: Icons.store_mall_directory_outlined, label: 'Stores'),
-                          _Shortcut(icon: Icons.history, label: 'Activity'),
-                          _Shortcut(icon: Icons.favorite_border, label: 'Community'),
-                          _Shortcut(icon: Icons.support_agent, label: 'Support'),
-                          _Shortcut(icon: Icons.info_outline, label: 'About'),
-                        ],
+                    // Actions row (Benefits + Order first, then small chips)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _BigTile(
+                                icon: Icons.workspace_premium_rounded,
+                                label: 'Benefits',
+                                onTap: () => showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.white,
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                  ),
+                                  builder: (_) => _BenefitsSheet(
+                                    currentPoints: yearPts,
+                                    tiers: tiers,
+                                    perks: perks,
+                                    discountsMap: discountsMap,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _BigTile(
+                                icon: Icons.shopping_bag_outlined,
+                                label: 'Order',
+                                onTap: () {
+                                  // TODO: Open webview / deep link to Shopify store
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                    // Quick chips — Wrap so there's no overflow on small screens
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: const [
+                            _QuickChip(icon: Icons.qr_code_2, label: 'Scan'),
+                            _QuickChip(icon: Icons.store_mall_directory_outlined, label: 'Stores'),
+                            _QuickChip(icon: Icons.history, label: 'Activity'),
+                            _QuickChip(icon: Icons.support_agent, label: 'Support'),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -243,15 +270,16 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-/// ------- Scan Tab -------
-
+/// =========================
+/// Scan tab (QR)
+/// =========================
 class _ScanTab extends StatelessWidget {
   const _ScanTab();
 
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? 'guest';
-    final code = 'TKO:$uid'; // replace with memberCode when you store it
+    final code = 'TKO:$uid';
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -267,26 +295,23 @@ class _ScanTab extends StatelessWidget {
   }
 }
 
-/// ------- Discover Tab -------
-
+/// =========================
+/// Discover (placeholder)
+/// =========================
 class _DiscoverTab extends StatelessWidget {
   const _DiscoverTab();
   @override
   Widget build(BuildContext context) {
-    final items = List.generate(
-      8,
-          (i) => ('Bonus ${100 + i * 25} pts', 'On selected items this week'),
-    );
-
+    final items = List.generate(8, (i) => ('Bonus ${100 + i * 25} pts', 'On selected items this week'));
     return ListView.separated(
       padding: const EdgeInsets.only(top: 8),
       itemCount: items.length,
       itemBuilder: (_, i) {
-        final (title, sub) = items[i];
+        final item = items[i];
         return ListTile(
           leading: const Icon(Icons.local_offer_outlined),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text(sub),
+          title: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(item.$2),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {},
         );
@@ -296,8 +321,9 @@ class _DiscoverTab extends StatelessWidget {
   }
 }
 
-/// ------- Profile Tab -------
-
+/// =========================
+/// Profile
+/// =========================
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab();
   @override
@@ -325,38 +351,90 @@ class _ProfileTab extends StatelessWidget {
   }
 }
 
-/// ------- Widgets -------
+/// =========================
+/// Models
+/// =========================
+class _Tier {
+  final String name;
+  final int min;
+  const _Tier({required this.name, required this.min});
+  factory _Tier.fromMap(Map<String, dynamic> m) => _Tier(
+    name: m['name'] as String,
+    min: (m['min'] as num).toInt(),
+  );
+}
 
+class _Perk {
+  final String title;
+  final String description;
+  final String minTierName;
+  const _Perk({required this.title, required this.description, required this.minTierName});
+  factory _Perk.fromMap(Map<String, dynamic> m) => _Perk(
+    title: m['title'] ?? m['name'] ?? '',
+    description: m['description'] ?? '',
+    minTierName: m['minTier'] ?? m['minTierName'] ?? 'Featherweight',
+  );
+}
+
+/// =========================
+/// Helpers
+/// =========================
+_Tier _currentTier(List<_Tier> tiers, int pts) {
+  _Tier cur = tiers.first;
+  for (final t in tiers) {
+    if (pts >= t.min) cur = t;
+  }
+  return cur;
+}
+
+int? _nextThreshold(List<_Tier> tiers, int pts) {
+  for (final t in tiers) {
+    if (pts < t.min) return t.min;
+  }
+  return null;
+}
+
+int _tierIndexByName(List<_Tier> tiers, String name) =>
+    tiers.indexWhere((t) => t.name.toLowerCase() == name.toLowerCase());
+
+/// =========================
+/// UI pieces
+/// =========================
 class _TierCard extends StatelessWidget {
   final String tier;
   final int yearPoints;
-  final int toNextPoints; // 0 when top tier
+  final int toNextPoints;
   final double progress;
   final int lifetimePts;
-
+  final double earnX;
   const _TierCard({
     required this.tier,
     required this.yearPoints,
     required this.toNextPoints,
     required this.progress,
     required this.lifetimePts,
+    required this.earnX,
   });
 
   Color get _tierColor {
     switch (tier.toLowerCase()) {
-      case 'featherweight': return Colors.black87;
-      case 'lightweight':   return tkoTeal;
-      case 'welterweight':  return tkoGold;
-      case 'heavyweight':   return tkoOrange;
-      case 'reigning champion': return tkoBrown;
-      default: return Colors.black54;
+      case 'lightweight':
+        return tkoGold;
+      case 'welterweight':
+        return tkoOrange;
+      case 'heavyweight':
+        return tkoBrown;
+      case 'reigning champion':
+        return tkoTeal;
+      default:
+        return Colors.black54;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 168,
+      height: 160,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -365,10 +443,9 @@ class _TierCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          // progress ring
           SizedBox(
-            width: 96,
-            height: 96,
+            width: 92,
+            height: 92,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -392,20 +469,26 @@ class _TierCard extends StatelessWidget {
               children: [
                 _TierChip(name: tier, color: _tierColor),
                 const SizedBox(height: 6),
-                Text('$yearPoints pts',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                Text('$yearPoints pts', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 2),
                 Text(
-                  toNextPoints == 0 ? 'Top tier achieved' : '$toNextPoints pts to next tier',
-                  style: TextStyle(color: Colors.black.withOpacity(.6)),
+                  toNextPoints <= 0 ? 'Top tier achieved' : '$toNextPoints pts to next tier',
+                  style: TextStyle(color: Colors.black.withOpacity(.65)),
                 ),
-                const Spacer(),
+                const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.all_inclusive, size: 16),
+                    const Icon(Icons.bolt, size: 16, color: tkoBrown),
                     const SizedBox(width: 6),
-                    Text('Lifetime: $lifetimePts pts',
+                    Text('Earn ${earnX.toStringAsFixed(2)}x points per \$1',
                         style: TextStyle(color: Colors.black.withOpacity(.7))),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Icon(Icons.timeline, size: 16, color: tkoBrown),
+                    const SizedBox(width: 6),
+                    Text('Lifetime: $lifetimePts pts', style: TextStyle(color: Colors.black.withOpacity(.7))),
                   ],
                 ),
               ],
@@ -450,7 +533,8 @@ class _PromoCard extends StatelessWidget {
     return Container(
       height: 140,
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(18),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 14, offset: Offset(0, 6))],
       ),
       child: Stack(
@@ -459,32 +543,32 @@ class _PromoCard extends StatelessWidget {
             right: 140,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(color: Colors.black.withOpacity(.7))),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: tkoOrange.withOpacity(.14),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: const [
-                        Icon(Icons.local_offer_outlined, size: 16),
-                        SizedBox(width: 6),
-                        Text('6 new offers'),
-                        SizedBox(width: 6),
-                        Icon(Icons.chevron_right, size: 18),
-                      ]),
-                    ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: TextStyle(color: Colors.black.withOpacity(.7))),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: tkoOrange.withOpacity(.14),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.local_offer_outlined, size: 16),
+                    const SizedBox(width: 6),
+                    Text(badge),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.chevron_right, size: 18),
                   ]),
+                ),
+              ]),
             ),
           ),
           Positioned(
-            right: 8, top: 8, bottom: 8,
+            right: 8,
+            top: 8,
+            bottom: 8,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: SizedBox(
@@ -499,27 +583,59 @@ class _PromoCard extends StatelessWidget {
   }
 }
 
-class _Shortcut extends StatelessWidget {
+class _BigTile extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _Shortcut({required this.icon, required this.label});
+  final VoidCallback? onTap;
+  const _BigTile({required this.icon, required this.label, this.onTap});
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-          ),
-          child: Icon(icon, size: 26),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 92,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 6))],
         ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 26),
+              const SizedBox(height: 6),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _QuickChip({required this.icon, required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -544,3 +660,184 @@ class _RoundIcon extends StatelessWidget {
 
 Widget _bubble(double size, Color c) =>
     Container(width: size, height: size, decoration: BoxDecoration(color: c, shape: BoxShape.circle));
+
+/// ------------------------
+/// Benefits bottom sheet
+/// ------------------------
+class _BenefitsSheet extends StatefulWidget {
+  final int currentPoints;
+  final List<_Tier> tiers;
+  final List<_Perk> perks;
+  final Map<String, dynamic> discountsMap;
+  const _BenefitsSheet({
+    required this.currentPoints,
+    required this.tiers,
+    required this.perks,
+    required this.discountsMap,
+  });
+
+  @override
+  State<_BenefitsSheet> createState() => _BenefitsSheetState();
+}
+
+class _BenefitsSheetState extends State<_BenefitsSheet> with SingleTickerProviderStateMixin {
+  late final TabController _tab = TabController(length: 2, vsync: this);
+
+  @override
+  Widget build(BuildContext context) {
+    final curTier = _currentTier(widget.tiers, widget.currentPoints);
+    final curIdx = widget.tiers.indexOf(curTier);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, controller) => Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(20)),
+          ),
+          const SizedBox(height: 12),
+          const Text('Your Benefits', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          TabBar(
+            controller: _tab,
+            indicatorColor: tkoOrange,
+            labelColor: Colors.black,
+            tabs: const [Tab(text: 'Perks'), Tab(text: 'Discounts')],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                // PERKS
+                ListView.builder(
+                  controller: controller,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: widget.perks.length,
+                  itemBuilder: (_, i) {
+                    final p = widget.perks[i];
+                    final needIdx = _tierIndexByName(widget.tiers, p.minTierName);
+                    final unlocked = (needIdx != -1 && needIdx <= curIdx);
+                    int? pointsLeft;
+                    if (!unlocked && needIdx != -1) {
+                      pointsLeft =
+                          (widget.tiers[needIdx].min - widget.currentPoints).clamp(0, 1 << 31);
+                    }
+                    return _PerkTile(perk: p, unlocked: unlocked, pointsLeft: pointsLeft);
+                  },
+                ),
+
+                // DISCOUNTS
+                ListView(
+                  controller: controller,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _DiscountsPanel(
+                      tierName: curTier.name,
+                      discountsMap: widget.discountsMap,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PerkTile extends StatelessWidget {
+  final _Perk perk;
+  final bool unlocked;
+  final int? pointsLeft;
+  const _PerkTile({required this.perk, required this.unlocked, this.pointsLeft});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = unlocked ? Colors.green : Colors.orange;
+    final status = unlocked ? 'Unlocked' : (pointsLeft != null ? '$pointsLeft pts to unlock' : 'Locked');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: c.withOpacity(.12)),
+            child: Icon(unlocked ? Icons.verified_rounded : Icons.lock_clock_rounded, color: c),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(perk.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              if (perk.description.isNotEmpty)
+                Text(perk.description, style: TextStyle(color: Colors.black.withOpacity(.7))),
+              Text(status, style: TextStyle(color: c, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiscountsPanel extends StatelessWidget {
+  final String tierName;
+  final Map<String, dynamic> discountsMap;
+  const _DiscountsPanel({required this.tierName, required this.discountsMap});
+
+  @override
+  Widget build(BuildContext context) {
+    final tierDisc = Map<String, dynamic>.from(discountsMap[tierName] ?? {});
+    final rows = <Widget>[];
+    tierDisc.forEach((k, v) {
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, size: 18, color: tkoBrown),
+              const SizedBox(width: 10),
+              Expanded(child: Text(k)),
+              Text(
+                v is num ? '-${v.toStringAsFixed(0)}%' : '-$v%',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+        ),
+      );
+      rows.add(const Divider(height: 1));
+    });
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$tierName Discounts', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          ...rows,
+        ],
+      ),
+    );
+  }
+}

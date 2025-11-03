@@ -70,7 +70,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/branding/tko_logo1.png
+    - assets/branding/tko_logo.png
 
   # To add  to your application, add an  section, like this:
   # :

@@ -9,10 +9,10 @@ import 'membership_qr_page.dart';
 
 /// Brand colors (TKO)
 const tkoOrange = Color(0xFFFF6A00);
-const tkoCream  = Color(0xFFF7F2EC);
-const tkoBrown  = Color(0xFF6A3B1A);
-const tkoTeal   = Color(0xFF00B8A2);
-const tkoGold   = Color(0xFFFFD23F);
+const tkoCream = Color(0xFFF7F2EC);
+const tkoBrown = Color(0xFF6A3B1A);
+const tkoTeal = Color(0xFF00B8A2);
+const tkoGold = Color(0xFFFFD23F);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,7 +27,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const _HomeTab(),
-      const MembershipQRPage(),   // 👈 Scan tab = premium membership page
+      const MembershipQRPage(), // Scan tab -> membership QR page
       const _DiscoverTab(),
       const _ProfileTab(),
     ];
@@ -37,11 +37,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-
-        // Hide brand logo on Scan tab
-        title: index == 1
-            ? const SizedBox.shrink()
-            : SizedBox(
+        title: SizedBox(
           height: 36,
           child: Image.asset(
             'assets/branding/tko_logo.png',
@@ -56,31 +52,18 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-
-        // No actions on Scan tab to keep top clean
-        actions: index == 1
-            ? const []
-            : [
+        actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(
-              Icons.notifications_none,
-              color: Colors.black87,
-            ),
+            icon: const Icon(Icons.notifications_none, color: Colors.black87),
           ),
           IconButton(
             onPressed: () {},
-            icon: const Icon(
-              Icons.account_circle_outlined,
-              color: Colors.black87,
-            ),
+            icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
           ),
         ],
       ),
-
       body: SafeArea(child: pages[index]),
-
-      // Brand bottom nav
       bottomNavigationBar: _TkoBottomNav(
         index: index,
         onChanged: (i) => setState(() => index = i),
@@ -107,8 +90,7 @@ class _HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = FirebaseAuth.instance.currentUser?.displayName ??
-        (FirebaseAuth.instance.currentUser?.email?.split('@').first ??
-            'Member');
+        (FirebaseAuth.instance.currentUser?.email?.split('@').first ?? 'Member');
 
     return Stack(
       children: [
@@ -127,17 +109,17 @@ class _HomeTab extends StatelessWidget {
         Positioned(
           left: -90,
           top: -80,
-          child: _bubble(220, tkoOrange.withOpacity(.10)),
+          child: _bubble(220, tkoOrange.withValues(alpha: .10)),
         ),
         Positioned(
           right: -70,
           bottom: -40,
-          child: _bubble(180, tkoTeal.withOpacity(.10)),
+          child: _bubble(180, tkoTeal.withValues(alpha: .10)),
         ),
         Positioned(
           right: 16,
           top: 64,
-          child: _bubble(70, tkoGold.withOpacity(.16)),
+          child: _bubble(70, tkoGold.withValues(alpha: .16)),
         ),
 
         StreamBuilder(
@@ -201,7 +183,7 @@ class _HomeTab extends StatelessWidget {
 
                 return CustomScrollView(
                   slivers: [
-                    // Greeting line: Hello + name
+                    // Greeting line
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
@@ -221,7 +203,7 @@ class _HomeTab extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -327,22 +309,20 @@ class _PosterCarouselState extends State<_PosterCarousel> {
         .orderBy('priority', descending: true)
         .snapshots()
         .map(
-          (s) {
-        return s.docs
-            .where((d) {
-          final m = (d.data() as Map<String, dynamic>? ?? {});
-          final Timestamp? startsAt = m['startsAt'];
-          final Timestamp? endsAt = m['endsAt'];
-          final afterStart =
-              (startsAt == null) || (startsAt.compareTo(now) <= 0);
-          final beforeEnd =
-              (endsAt == null) || (endsAt.compareTo(now) >= 0);
-          return afterStart && beforeEnd;
-        })
-            .map(_Poster.fromDoc)
-            .where((p) => p.title.isNotEmpty && p.imageUrl.isNotEmpty)
-            .toList();
-      },
+          (s) => s.docs
+          .where((d) {
+        final m = (d.data() as Map<String, dynamic>? ?? {});
+        final Timestamp? startsAt = m['startsAt'];
+        final Timestamp? endsAt = m['endsAt'];
+        final afterStart =
+            (startsAt == null) || (startsAt.compareTo(now) <= 0);
+        final beforeEnd =
+            (endsAt == null) || (endsAt.compareTo(now) >= 0);
+        return afterStart && beforeEnd;
+      })
+          .map(_Poster.fromDoc)
+          .where((p) => p.title.isNotEmpty && p.imageUrl.isNotEmpty)
+          .toList(),
     );
   }
 
@@ -386,10 +366,8 @@ class _PosterCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: CachedNetworkImage(
-              imageUrl: item.imageUrl,
-              fit: BoxFit.cover,
-            ),
+            child:
+            CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover),
           ),
           Positioned.fill(
             child: DecoratedBox(
@@ -398,8 +376,8 @@ class _PosterCard extends StatelessWidget {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    Colors.black.withOpacity(.55),
-                    Colors.black.withOpacity(.05),
+                    Colors.black.withValues(alpha: .55),
+                    Colors.black.withValues(alpha: .05),
                   ],
                 ),
               ),
@@ -430,7 +408,7 @@ class _PosterCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(.85),
+                            color: Colors.white.withValues(alpha: .85),
                           ),
                         ),
                     ],
@@ -439,7 +417,7 @@ class _PosterCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 TextButton(
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.black.withOpacity(.25),
+                    backgroundColor: Colors.black.withValues(alpha: .25),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -1280,7 +1258,7 @@ class _PerkTile extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: c.withOpacity(.12),
+              color: c.withValues(alpha: .12),
             ),
             child: Icon(
               unlocked ? Icons.verified_rounded : Icons.lock_clock_rounded,
@@ -1300,7 +1278,7 @@ class _PerkTile extends StatelessWidget {
                   Text(
                     perk.description,
                     style: TextStyle(
-                      color: Colors.black.withOpacity(.7),
+                      color: Colors.black.withValues(alpha: .7),
                     ),
                   ),
                 Text(

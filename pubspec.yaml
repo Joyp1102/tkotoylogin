@@ -71,6 +71,7 @@ flutter:
 
   assets:
     - assets/branding/tko_logo.png
+    - assets/branding/tko_cross_bg.png
 
   # To add  to your application, add an  section, like this:
   # :

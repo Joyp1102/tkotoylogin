@@ -4,8 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'membership_qr_page.dart';
 
-/// Brand
+/// Brand colors (TKO)
 const tkoOrange = Color(0xFFFF6A00);
 const tkoCream  = Color(0xFFF7F2EC);
 const tkoBrown  = Color(0xFF6A3B1A);
@@ -25,43 +26,47 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const _HomeTab(),
-      const _ScanTab(),
+      const MembershipQRPage(), // <- use your premium QR page here
       const _DiscoverTab(),
       const _ProfileTab(),
     ];
 
     return Scaffold(
-      // Branded header
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Padding(
-          padding: EdgeInsets.only(top: 4),
-          child: Text(
-            'TKO TOY CO.',
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.6,
-              color: tkoBrown,
+        title: SizedBox(
+          height: 36,
+          child: Image.asset(
+            'assets/branding/tko_logo.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Text(
+              'TKO TOY CO.',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.6,
+                color: tkoBrown,
+              ),
             ),
           ),
         ),
         actions: [
-          IconButton(onPressed: (){}, icon: const Icon(Icons.notifications_none, color: Colors.black87)),
-          IconButton(onPressed: (){}, icon: const Icon(Icons.account_circle_outlined, color: Colors.black87)),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.notifications_none, color: Colors.black87),
+          ),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
+          ),
         ],
       ),
       body: SafeArea(child: pages[index]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.qr_code_2_outlined), selectedIcon: Icon(Icons.qr_code_2), label: 'Scan'),
-          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: 'Discover'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
-        ],
+      // === Brand bottom nav ===
+      bottomNavigationBar: _TkoBottomNav(
+        index: index,
+        onChanged: (i) => setState(() => index = i),
       ),
       backgroundColor: Colors.white,
     );
@@ -69,7 +74,7 @@ class _HomePageState extends State<HomePage> {
 }
 
 /// =========================
-/// HOME TAB (clean, responsive)
+/// HOME TAB
 /// =========================
 class _HomeTab extends StatelessWidget {
   const _HomeTab();
@@ -94,85 +99,121 @@ class _HomeTab extends StatelessWidget {
           child: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment(-1,-1), end: Alignment(1,1),
+                begin: Alignment(-1, -1),
+                end: Alignment(1, 1),
                 colors: [Colors.white, tkoCream],
               ),
             ),
           ),
         ),
-        Positioned(left: -90, top: -80, child: _bubble(220, tkoOrange.withValues(alpha: .10))),
-        Positioned(right: -70, bottom: -40, child: _bubble(180, tkoTeal.withValues(alpha: .10))),
-        Positioned(right: 16, top: 64, child: _bubble(70, tkoGold.withValues(alpha: .16))),
+        Positioned(
+          left: -90,
+          top: -80,
+          child: _bubble(220, tkoOrange.withValues(alpha: .10)),
+        ),
+        Positioned(
+          right: -70,
+          bottom: -40,
+          child: _bubble(180, tkoTeal.withValues(alpha: .10)),
+        ),
+        Positioned(
+          right: 16,
+          top: 64,
+          child: _bubble(70, tkoGold.withValues(alpha: .16)),
+        ),
 
         StreamBuilder(
           stream: _settings$(),
           builder: (context, sSnap) {
             if (!sSnap.hasData) {
-              return const Center(child: CircularProgressIndicator(color: tkoBrown));
+              return const Center(
+                child: CircularProgressIndicator(color: tkoBrown),
+              );
             }
             final settings = sSnap.data!.data() ?? {};
 
             final tiers = (settings['tiers'] as List? ?? [])
                 .map((e) => _Tier.fromMap(Map<String, dynamic>.from(e)))
                 .toList()
-              ..sort((a,b)=>a.min.compareTo(b.min));
+              ..sort((a, b) => a.min.compareTo(b.min));
 
             final perks = (settings['perks'] as List? ?? [])
                 .map((e) => _Perk.fromMap(Map<String, dynamic>.from(e)))
                 .toList();
 
-            final discountsMap = Map<String, dynamic>.from(settings['discounts'] ?? {});
-            final earnMultipliers = Map<String, dynamic>.from(settings['earnMultipliers'] ?? {});
+            final discountsMap =
+            Map<String, dynamic>.from(settings['discounts'] ?? {});
+            final earnMultipliers =
+            Map<String, dynamic>.from(settings['earnMultipliers'] ?? {});
 
             return StreamBuilder(
               stream: _user$(),
               builder: (context, uSnap) {
                 if (!uSnap.hasData) {
-                  return const Center(child: CircularProgressIndicator(color: tkoBrown));
+                  return const Center(
+                    child: CircularProgressIndicator(color: tkoBrown),
+                  );
                 }
                 if (!uSnap.data!.exists) {
                   FirebaseFirestore.instance
                       .doc('users/${FirebaseAuth.instance.currentUser!.uid}')
-                      .set({'tier':'Featherweight','yearPoints':0,'lifetimePts':0}, SetOptions(merge:true));
-                  return const Center(child: CircularProgressIndicator(color: tkoBrown));
+                      .set(
+                    {'tier': 'Featherweight', 'yearPoints': 0, 'lifetimePts': 0},
+                    SetOptions(merge: true),
+                  );
+                  return const Center(
+                    child: CircularProgressIndicator(color: tkoBrown),
+                  );
                 }
 
                 final u = uSnap.data!.data()!;
-                final yearPts    = (u['yearPoints'] ?? 0) as int;
-                final lifetime   = (u['lifetimePts'] ?? 0) as int;
-                final curTier    = _currentTier(tiers, yearPts);
+                final yearPts = (u['yearPoints'] ?? 0) as int;
+                final lifetime = (u['lifetimePts'] ?? 0) as int; // kept, not shown separately
+                final curTier = _currentTier(tiers, yearPts);
                 final nextThresh = _nextThreshold(tiers, yearPts);
-                final toNext     = nextThresh == null ? 0 : (nextThresh - yearPts);
-                final progress   = nextThresh == null ? 1.0 : (yearPts / nextThresh).clamp(0,1).toDouble();
-                final earnX      = ((earnMultipliers[curTier.name] ?? 1.0) as num).toDouble();
+                final toNext = nextThresh == null ? 0 : (nextThresh - yearPts);
+                final progress = nextThresh == null
+                    ? 1.0
+                    : (yearPts / nextThresh).clamp(0, 1).toDouble();
+                final earnX =
+                ((earnMultipliers[curTier.name] ?? 1.0) as num).toDouble();
 
-                // width-aware poster height (16:9)
+                // slightly reduced poster height
                 final double posterHeight =
-                    (MediaQuery.of(context).size.width - 32) * 9 / 16;
+                    (MediaQuery.of(context).size.width - 32) * 0.48;
 
                 return CustomScrollView(
                   slivers: [
-                    // Greeting line
+                    // Greeting line (UPDATED: Hello + name)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Good day,', style: TextStyle(color: Colors.black.withValues(alpha: .55))),
+                            Text(
+                              'Hello,',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black.withOpacity(0.6),
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               '$name.',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ),
 
-                    // Tier progress card
+                    // Tier hero card
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -181,14 +222,14 @@ class _HomeTab extends StatelessWidget {
                           yearPoints: yearPts,
                           toNextPoints: toNext,
                           progress: progress,
-                          lifetimePts: lifetime,
                           earnX: earnX,
+                          tiers: tiers,
                         ),
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-                    // Posters carousel (fills width)
+                    // Posters carousel
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -197,62 +238,19 @@ class _HomeTab extends StatelessWidget {
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-                    // Two big tiles: Benefits & Order
+                    // 2x2 grid actions + pills
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _BigTile(
-                                icon: Icons.workspace_premium_rounded,
-                                label: 'Benefits',
-                                onTap: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.white,
-                                    shape: const RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                                    ),
-                                    builder: (_) => _BenefitsSheet(
-                                      currentPoints: yearPts,
-                                      tiers: tiers,
-                                      perks: perks,
-                                      discountsMap: discountsMap,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: _BigTile(
-                                icon: Icons.shopping_bag_outlined,
-                                label: 'Order',
-                              ),
-                            ),
-                          ],
+                        child: _ActionGrid(
+                          yearPts: yearPts,
+                          tiers: tiers,
+                          perks: perks,
+                          discountsMap: discountsMap,
                         ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                    // Quick chips
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
-                        child: Wrap(
-                          spacing: 10, runSpacing: 10,
-                          children: const [
-                            _QuickChip(icon: Icons.qr_code_2, label: 'Scan'),
-                            _QuickChip(icon: Icons.store_mall_directory_outlined, label: 'Stores'),
-                            _QuickChip(icon: Icons.history, label: 'Activity'),
-                            _QuickChip(icon: Icons.support_agent, label: 'Support'),
-                          ],
-                        ),
-                      ),
-                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
                   ],
                 );
               },
@@ -287,7 +285,8 @@ class _Poster {
       subtitle: (m['subtitle'] ?? '').toString(),
       ctaText: (m['ctaText'] ?? '').toString(),
       deeplink: (m['deeplink'] ?? '').toString(),
-      priority: (m['priority'] ?? 0) is num ? (m['priority'] as num).toInt() : 0,
+      priority:
+      (m['priority'] ?? 0) is num ? (m['priority'] as num).toInt() : 0,
     );
   }
 }
@@ -310,18 +309,21 @@ class _PosterCarouselState extends State<_PosterCarousel> {
         .collection('posters')
         .orderBy('priority', descending: true)
         .snapshots()
-        .map((s) => s.docs
-        .where((d) {
-      final m = (d.data() as Map<String, dynamic>? ?? {});
-      final Timestamp? startsAt = m['startsAt'];
-      final Timestamp? endsAt   = m['endsAt'];
-      final afterStart = (startsAt == null) || (startsAt.compareTo(now) <= 0);
-      final beforeEnd  = (endsAt == null)   || (endsAt.compareTo(now) >= 0);
-      return afterStart && beforeEnd;
-    })
-        .map(_Poster.fromDoc)
-        .where((p) => p.title.isNotEmpty && p.imageUrl.isNotEmpty)
-        .toList(),
+        .map(
+          (s) => s.docs
+          .where((d) {
+        final m = (d.data() as Map<String, dynamic>? ?? {});
+        final Timestamp? startsAt = m['startsAt'];
+        final Timestamp? endsAt = m['endsAt'];
+        final afterStart =
+            (startsAt == null) || (startsAt.compareTo(now) <= 0);
+        final beforeEnd =
+            (endsAt == null) || (endsAt.compareTo(now) >= 0);
+        return afterStart && beforeEnd;
+      })
+          .map(_Poster.fromDoc)
+          .where((p) => p.title.isNotEmpty && p.imageUrl.isNotEmpty)
+          .toList(),
     );
   }
 
@@ -365,14 +367,15 @@ class _PosterCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover),
+            child:
+            CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover),
           ),
-          // gradient readable overlay
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
                   colors: [
                     Colors.black.withValues(alpha: .55),
                     Colors.black.withValues(alpha: .05),
@@ -382,20 +385,33 @@ class _PosterCard extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: 12, right: 12, bottom: 12,
+            left: 12,
+            right: 12,
+            bottom: 12,
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                       if (item.subtitle.isNotEmpty)
-                        Text(item.subtitle,
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.white.withValues(alpha: .85))),
+                        Text(
+                          item.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: .85),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -404,13 +420,18 @@ class _PosterCard extends StatelessWidget {
                   style: TextButton.styleFrom(
                     backgroundColor: Colors.black.withValues(alpha: .25),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: () {
                     // TODO: open item.deeplink or route
                   },
-                  child: Text(item.ctaText.isEmpty ? 'View' : item.ctaText),
+                  child: Text(item.ctaText.isEmpty ? 'Details' : item.ctaText),
                 ),
               ],
             ),
@@ -422,7 +443,7 @@ class _PosterCard extends StatelessWidget {
 }
 
 /// =========================
-/// Scan tab (QR)
+/// Scan tab (OLD – now unused but you can delete if you want)
 /// =========================
 class _ScanTab extends StatelessWidget {
   const _ScanTab();
@@ -435,7 +456,10 @@ class _ScanTab extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Membership QR', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const Text(
+            'Membership QR',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 16),
           QrImageView(data: code, size: 240),
           const SizedBox(height: 10),
@@ -454,7 +478,8 @@ class _DiscoverTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = List.generate(
-      8, (i) => ('Bonus ${100 + i * 25} pts', 'On selected items this week'),
+      8,
+          (i) => ('Bonus ${100 + i * 25} pts', 'On selected items this week'),
     );
     return ListView.separated(
       padding: const EdgeInsets.only(top: 8),
@@ -463,7 +488,10 @@ class _DiscoverTab extends StatelessWidget {
         final item = items[i];
         return ListTile(
           leading: const Icon(Icons.local_offer_outlined),
-          title: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w700)),
+          title: Text(
+            item.$1,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
           subtitle: Text(item.$2),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {},
@@ -487,7 +515,8 @@ class _ProfileTab extends StatelessWidget {
       children: [
         ListTile(
           leading: CircleAvatar(
-            backgroundImage: (u?.photoURL != null) ? NetworkImage(u!.photoURL!) : null,
+            backgroundImage:
+            (u?.photoURL != null) ? NetworkImage(u!.photoURL!) : null,
             child: (u?.photoURL == null) ? const Icon(Icons.person) : null,
           ),
           title: Text(u?.displayName ?? 'Member'),
@@ -519,7 +548,11 @@ class _Perk {
   final String title;
   final String description;
   final String minTierName;
-  const _Perk({required this.title, required this.description, required this.minTierName});
+  const _Perk({
+    required this.title,
+    required this.description,
+    required this.minTierName,
+  });
   factory _Perk.fromMap(Map<String, dynamic> m) => _Perk(
     title: m['title'] ?? m['name'] ?? '',
     description: m['description'] ?? '',
@@ -548,111 +581,264 @@ int _tierIndexByName(List<_Tier> tiers, String name) =>
 /// =========================
 /// UI pieces
 /// =========================
+
+/// Hero-style tier card
 class _TierCard extends StatelessWidget {
   final String tier;
   final int yearPoints;
   final int toNextPoints;
   final double progress;
-  final int lifetimePts;
   final double earnX;
+  final List<_Tier> tiers;
+
   const _TierCard({
     required this.tier,
     required this.yearPoints,
     required this.toNextPoints,
     required this.progress,
-    required this.lifetimePts,
     required this.earnX,
+    required this.tiers,
   });
 
   Color get _tierColor {
     switch (tier.toLowerCase()) {
-      case 'lightweight': return tkoGold;
-      case 'welterweight': return tkoOrange;
-      case 'heavyweight': return tkoBrown;
-      case 'reigning champion': return tkoTeal;
-      default: return Colors.black54;
+      case 'lightweight':
+        return tkoGold;
+      case 'welterweight':
+        return tkoOrange;
+      case 'heavyweight':
+        return tkoBrown;
+      case 'reigning champion':
+        return tkoTeal;
+      default:
+        return tkoTeal;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final curIdx = _tierIndexByName(tiers, tier);
+    final nextIdx =
+    (curIdx != -1 && curIdx + 1 < tiers.length) ? curIdx + 1 : curIdx;
+    final nextName =
+    (nextIdx > curIdx) ? tiers[nextIdx].name : 'Top tier';
+    final pct = (progress.clamp(0, 1) * 100).round();
+
     return LayoutBuilder(
-      builder: (_, c) {
-        final compact = c.maxWidth < 360;
+      builder: (_, constraints) {
+        final compact = constraints.maxWidth < 360;
+
         return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, 8))],
-          ),
           padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              SizedBox(
-                width: compact ? 76 : 92, height: compact ? 76 : 92,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CircularProgressIndicator(
-                      value: progress.clamp(0,1),
-                      strokeWidth: 8,
-                      color: _tierColor,
-                      backgroundColor: Colors.black12,
-                    ),
-                    Center(
-                      child: Text('${(progress*100).round()}%',
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                    ),
-                  ],
-                ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                tkoTeal.withOpacity(.20),
+                tkoOrange.withOpacity(.18),
+                Colors.white,
+              ],
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 22,
+                offset: Offset(0, 12),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _TierChip(name: tier, color: _tierColor),
-                    const SizedBox(height: 6),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text('$yearPoints pts',
-                          style: TextStyle(fontSize: compact ? 18 : 22, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  // LEFT text
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tiering',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.black.withOpacity(.55),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          tier,
+                          style: TextStyle(
+                            fontSize: compact ? 18 : 20,
+                            fontWeight: FontWeight.w800,
+                            color: tkoBrown,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '$yearPoints pts',
+                          style: TextStyle(
+                            fontSize: compact ? 18 : 20,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          toNextPoints <= 0
+                              ? 'You’re at the highest tier for this year.'
+                              : 'Get $toNextPoints more points to reach $nextName.',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.black.withOpacity(.75),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        toNextPoints <= 0 ? 'Top tier achieved' : '$toNextPoints pts to next tier',
-                        style: TextStyle(color: Colors.black.withValues(alpha: .65)),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // RIGHT badge orb
+                  SizedBox(
+                    width: compact ? 74 : 84,
+                    height: compact ? 74 : 84,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: compact ? 74 : 84,
+                          height: compact ? 74 : 84,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                _tierColor.withOpacity(.75),
+                                _tierColor.withOpacity(.0),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: compact ? 58 : 64,
+                          height: compact ? 58 : 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white,
+                                _tierColor.withOpacity(.8),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _tierColor.withOpacity(.4),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Image.asset(
+                                'assets/branding/tko_logo.png',
+                                fit: BoxFit.contain,
+                                color: Colors.white,
+                                colorBlendMode: BlendMode.srcATop,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.sports_mma,
+                                  color: Colors.white,
+                                  size: compact ? 26 : 30,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Positioned(
+                          right: 4,
+                          top: 8,
+                          child: Icon(
+                            Icons.auto_awesome,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // progress bar + tier labels
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '$pct% to next',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _tierColor,
+                        ),
+                      ),
+                      Text(
+                        '${earnX.toStringAsFixed(2)}x pts per \$1',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black.withOpacity(.7),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.9),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0, 1),
+                        backgroundColor: Colors.transparent,
+                        valueColor:
+                        AlwaysStoppedAnimation<Color>(_tierColor),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.bolt, size: 16, color: tkoBrown),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text('Earn ${earnX.toStringAsFixed(2)}x points per \$1',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.black.withValues(alpha: .7))),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        tier,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        const Icon(Icons.timeline, size: 16, color: tkoBrown),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text('Lifetime: $lifetimePts pts',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.black.withValues(alpha: .7))),
+                      ),
+                      Text(
+                        nextName,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -662,87 +848,282 @@ class _TierCard extends StatelessWidget {
   }
 }
 
-class _TierChip extends StatelessWidget {
-  final String name; final Color color;
-  const _TierChip({required this.name, required this.color});
+/// ---------
+/// Action area (2x2 grid + pills)
+/// ---------
+class _ActionGrid extends StatelessWidget {
+  final int yearPts;
+  final List<_Tier> tiers;
+  final List<_Perk> perks;
+  final Map<String, dynamic> discountsMap;
+
+  const _ActionGrid({
+    required this.yearPts,
+    required this.tiers,
+    required this.perks,
+    required this.discountsMap,
+  });
+
+  void _openBenefits(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _BenefitsSheet(
+        currentPoints: yearPts,
+        tiers: tiers,
+        perks: perks,
+        discountsMap: discountsMap,
+      ),
+    );
+  }
+
+  void _openQuickScan(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'guest';
+    final code = 'TKO:$uid';
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Quick Scan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 12),
+            QrImageView(data: code, size: 200),
+            const SizedBox(height: 8),
+            const Text(
+              'Show this at checkout to earn or redeem points.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: .35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text(name, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
-        ],
-      ),
+    return Column(
+      children: [
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.5,
+          children: [
+            _PrimaryActionCard(
+              icon: Icons.workspace_premium_rounded,
+              label: 'Benefits',
+              subtitle: 'See what you’ve unlocked',
+              startColor: tkoOrange.withOpacity(.20),
+              endColor: tkoGold.withOpacity(.65),
+              onTap: () => _openBenefits(context),
+            ),
+            _PrimaryActionCard(
+              icon: Icons.shopping_bag_outlined,
+              label: 'Order',
+              subtitle: 'Place or view orders',
+              startColor: tkoTeal.withOpacity(.18),
+              endColor: tkoTeal.withOpacity(.60),
+              onTap: () {
+                // TODO: navigate to order screen
+              },
+            ),
+            _PrimaryActionCard(
+              icon: Icons.qr_code_scanner_rounded,
+              label: 'Scan',
+              subtitle: 'Earn & redeem fast',
+              startColor: tkoOrange.withOpacity(.22),
+              endColor: tkoBrown.withOpacity(.55),
+              onTap: () => _openQuickScan(context),
+            ),
+            _PrimaryActionCard(
+              icon: Icons.store_mall_directory_outlined,
+              label: 'Stores',
+              subtitle: 'Find a TKO location',
+              startColor: tkoTeal.withOpacity(.16),
+              endColor: tkoTeal.withOpacity(.55),
+              onTap: () {
+                // TODO: stores screen
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            _PillAction(
+              icon: Icons.history,
+              label: 'Activity',
+            ),
+            SizedBox(width: 10),
+            _PillAction(
+              icon: Icons.support_agent,
+              label: 'Support',
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _BigTile extends StatelessWidget {
+class _PrimaryActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String subtitle;
+  final Color startColor;
+  final Color endColor;
   final VoidCallback? onTap;
-  const _BigTile({required this.icon, required this.label, this.onTap});
+
+  const _PrimaryActionCard({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.startColor,
+    required this.endColor,
+    this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      borderRadius: BorderRadius.circular(18),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 92,
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 6))],
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 26),
-              const SizedBox(height: 6),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              startColor,
+              endColor,
             ],
           ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x19000000),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(.92),
+              ),
+              child: Icon(icon, size: 18, color: tkoBrown),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(.94),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _QuickChip extends StatelessWidget {
-  final IconData icon; final String label;
-  const _QuickChip({required this.icon, required this.label});
+class _PillAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _PillAction({required this.icon, required this.label});
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          )
+        ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18), const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Icon(icon, size: 18, color: tkoBrown),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: tkoBrown,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-Widget _bubble(double size, Color c) =>
-    Container(width: size, height: size, decoration: BoxDecoration(color: c, shape: BoxShape.circle));
+Widget _bubble(double size, Color c) => Container(
+  width: size,
+  height: size,
+  decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+);
 
 /// ------------------------
 /// Benefits bottom sheet
@@ -763,13 +1144,41 @@ class _BenefitsSheet extends StatefulWidget {
   State<_BenefitsSheet> createState() => _BenefitsSheetState();
 }
 
-class _BenefitsSheetState extends State<_BenefitsSheet> with SingleTickerProviderStateMixin {
+class _BenefitsSheetState extends State<_BenefitsSheet>
+    with SingleTickerProviderStateMixin {
   late final TabController _tab = TabController(length: 2, vsync: this);
 
   @override
   Widget build(BuildContext context) {
     final curTier = _currentTier(widget.tiers, widget.currentPoints);
-    final curIdx  = widget.tiers.indexOf(curTier);
+    final curIdx = widget.tiers.indexOf(curTier);
+
+    // Build + sort perks: unlocked first, then by pointsLeft ascending
+    final perkItems = widget.perks.map((p) {
+      final needIdx = _tierIndexByName(widget.tiers, p.minTierName);
+      final unlocked = (needIdx != -1 && needIdx <= curIdx);
+
+      int? pointsLeft;
+      if (!unlocked && needIdx != -1) {
+        pointsLeft = (widget.tiers[needIdx].min - widget.currentPoints)
+            .clamp(0, 1 << 31);
+      }
+
+      return {
+        'perk': p,
+        'unlocked': unlocked,
+        'pointsLeft': pointsLeft,
+      };
+    }).toList();
+
+    perkItems.sort((a, b) {
+      final ua = a['unlocked'] as bool;
+      final ub = b['unlocked'] as bool;
+      if (ua != ub) return ua ? -1 : 1; // unlocked first
+      final pa = (a['pointsLeft'] as int?) ?? 0;
+      final pb = (b['pointsLeft'] as int?) ?? 0;
+      return pa.compareTo(pb);
+    });
 
     return DraggableScrollableSheet(
       initialChildSize: 0.90,
@@ -779,11 +1188,19 @@ class _BenefitsSheetState extends State<_BenefitsSheet> with SingleTickerProvide
       builder: (context, controller) => Column(
         children: [
           const SizedBox(height: 8),
-          Container(width: 44, height: 5, decoration: BoxDecoration(
-            color: Colors.black12, borderRadius: BorderRadius.circular(20),
-          )),
+          Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
           const SizedBox(height: 12),
-          const Text('Your Benefits', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const Text(
+            'Your Benefits',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 8),
           TabBar(
             controller: _tab,
@@ -795,20 +1212,21 @@ class _BenefitsSheetState extends State<_BenefitsSheet> with SingleTickerProvide
             child: TabBarView(
               controller: _tab,
               children: [
-                // PERKS
+                // PERKS (sorted)
                 ListView.builder(
                   controller: controller,
                   padding: const EdgeInsets.all(16),
-                  itemCount: widget.perks.length,
+                  itemCount: perkItems.length,
                   itemBuilder: (_, i) {
-                    final p = widget.perks[i];
-                    final needIdx = _tierIndexByName(widget.tiers, p.minTierName);
-                    final unlocked = (needIdx != -1 && needIdx <= curIdx);
-                    int? pointsLeft;
-                    if (!unlocked && needIdx != -1) {
-                      pointsLeft = (widget.tiers[needIdx].min - widget.currentPoints).clamp(0, 1<<31);
-                    }
-                    return _PerkTile(perk: p, unlocked: unlocked, pointsLeft: pointsLeft);
+                    final item = perkItems[i];
+                    final _Perk perk = item['perk'] as _Perk;
+                    final bool unlocked = item['unlocked'] as bool;
+                    final int? pointsLeft = item['pointsLeft'] as int?;
+                    return _PerkTile(
+                      perk: perk,
+                      unlocked: unlocked,
+                      pointsLeft: pointsLeft,
+                    );
                   },
                 ),
 
@@ -836,36 +1254,71 @@ class _PerkTile extends StatelessWidget {
   final _Perk perk;
   final bool unlocked;
   final int? pointsLeft;
-  const _PerkTile({required this.perk, required this.unlocked, this.pointsLeft});
+  const _PerkTile({
+    required this.perk,
+    required this.unlocked,
+    this.pointsLeft,
+  });
 
   @override
   Widget build(BuildContext context) {
     final c = unlocked ? Colors.green : Colors.orange;
-    final status = unlocked ? 'Unlocked' :
-    (pointsLeft != null ? '$pointsLeft pts to unlock' : 'Locked');
+    final status = unlocked
+        ? 'Unlocked'
+        : (pointsLeft != null ? '$pointsLeft pts to unlock' : 'Locked');
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          )
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: c.withValues(alpha: .12)),
-            child: Icon(unlocked ? Icons.verified_rounded : Icons.lock_clock_rounded, color: c),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: c.withValues(alpha: .12),
+            ),
+            child: Icon(
+              unlocked ? Icons.verified_rounded : Icons.lock_clock_rounded,
+              color: c,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(perk.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-              if (perk.description.isNotEmpty)
-                Text(perk.description, style: TextStyle(color: Colors.black.withValues(alpha: .7))),
-              Text(status, style: TextStyle(color: c, fontWeight: FontWeight.w600)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  perk.title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                if (perk.description.isNotEmpty)
+                  Text(
+                    perk.description,
+                    style: TextStyle(
+                      color: Colors.black.withValues(alpha: .7),
+                    ),
+                  ),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: c,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
           const Icon(Icons.chevron_right),
         ],
@@ -877,44 +1330,201 @@ class _PerkTile extends StatelessWidget {
 class _DiscountsPanel extends StatelessWidget {
   final String tierName;
   final Map<String, dynamic> discountsMap;
-  const _DiscountsPanel({required this.tierName, required this.discountsMap});
+  const _DiscountsPanel({
+    required this.tierName,
+    required this.discountsMap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final tierDisc = Map<String, dynamic>.from(discountsMap[tierName] ?? {});
     final rows = <Widget>[];
-    tierDisc.forEach((k, v) {
+
+    // Sort alphabetically by key for nicer UI
+    final entries = tierDisc.entries.toList()
+      ..sort((a, b) => a.key.toString().compareTo(b.key.toString()));
+
+    for (final e in entries) {
+      final key = e.key.toString();
+      final v = e.value;
+      final valueText = v is num ? v.toStringAsFixed(0) : v.toString();
+
       rows.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              const Icon(Icons.check_circle_outline, size: 18, color: tkoBrown),
+              const Icon(
+                Icons.check_circle_outline,
+                size: 18,
+                color: tkoBrown,
+              ),
               const SizedBox(width: 10),
-              Expanded(child: Text(k)),
-              Text('-${v is num ? v.toStringAsFixed(0) : v}%',
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              Expanded(child: Text(key)),
+              Text(
+                '$valueText%', // no minus sign
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ],
           ),
         ),
       );
       rows.add(const Divider(height: 1));
-    });
+    }
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$tierName Discounts', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          Text(
+            '$tierName Discounts',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 6),
           ...rows,
         ],
+      ),
+    );
+  }
+}
+
+/// =========================
+/// BRAND BOTTOM NAV
+/// =========================
+class _TkoBottomNav extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  const _TkoBottomNav({
+    required this.index,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+        decoration: const BoxDecoration(
+          color: tkoCream,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x22000000),
+              blurRadius: 14,
+              offset: Offset(0, -6),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            _NavItem(
+              icon: Icons.home_outlined,
+              activeIcon: Icons.home,
+              label: 'Home',
+              isActive: index == 0,
+              onTap: () => onChanged(0),
+            ),
+            _NavItem(
+              icon: Icons.qr_code_2_outlined,
+              activeIcon: Icons.qr_code_2,
+              label: 'Scan',
+              isActive: index == 1,
+              onTap: () => onChanged(1),
+            ),
+            _NavItem(
+              icon: Icons.auto_awesome_outlined,
+              activeIcon: Icons.auto_awesome,
+              label: 'Discover',
+              isActive: index == 2,
+              onTap: () => onChanged(2),
+            ),
+            _NavItem(
+              icon: Icons.person_outline,
+              activeIcon: Icons.person,
+              label: 'Profile',
+              isActive: index == 3,
+              onTap: () => onChanged(3),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: isActive
+                ? const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              )
+            ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isActive ? activeIcon : icon,
+                size: isActive ? 22 : 20,
+                color: isActive ? tkoBrown : Colors.black54,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? tkoBrown : Colors.black45,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

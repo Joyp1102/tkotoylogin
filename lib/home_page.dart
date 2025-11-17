@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
 import 'membership_qr_page.dart';
 
 /// Brand colors (TKO)
@@ -26,7 +27,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const _HomeTab(),
-      const MembershipQRPage(), // <- use your premium QR page here
+      const MembershipQRPage(),   // 👈 Scan tab = premium membership page
       const _DiscoverTab(),
       const _ProfileTab(),
     ];
@@ -36,7 +37,11 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: SizedBox(
+
+        // Hide brand logo on Scan tab
+        title: index == 1
+            ? const SizedBox.shrink()
+            : SizedBox(
           height: 36,
           child: Image.asset(
             'assets/branding/tko_logo.png',
@@ -51,19 +56,31 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-        actions: [
+
+        // No actions on Scan tab to keep top clean
+        actions: index == 1
+            ? const []
+            : [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.notifications_none, color: Colors.black87),
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Colors.black87,
+            ),
           ),
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
+            icon: const Icon(
+              Icons.account_circle_outlined,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),
+
       body: SafeArea(child: pages[index]),
-      // === Brand bottom nav ===
+
+      // Brand bottom nav
       bottomNavigationBar: _TkoBottomNav(
         index: index,
         onChanged: (i) => setState(() => index = i),
@@ -90,7 +107,8 @@ class _HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = FirebaseAuth.instance.currentUser?.displayName ??
-        (FirebaseAuth.instance.currentUser?.email?.split('@').first ?? 'Member');
+        (FirebaseAuth.instance.currentUser?.email?.split('@').first ??
+            'Member');
 
     return Stack(
       children: [
@@ -109,17 +127,17 @@ class _HomeTab extends StatelessWidget {
         Positioned(
           left: -90,
           top: -80,
-          child: _bubble(220, tkoOrange.withValues(alpha: .10)),
+          child: _bubble(220, tkoOrange.withOpacity(.10)),
         ),
         Positioned(
           right: -70,
           bottom: -40,
-          child: _bubble(180, tkoTeal.withValues(alpha: .10)),
+          child: _bubble(180, tkoTeal.withOpacity(.10)),
         ),
         Positioned(
           right: 16,
           top: 64,
-          child: _bubble(70, tkoGold.withValues(alpha: .16)),
+          child: _bubble(70, tkoGold.withOpacity(.16)),
         ),
 
         StreamBuilder(
@@ -168,7 +186,6 @@ class _HomeTab extends StatelessWidget {
 
                 final u = uSnap.data!.data()!;
                 final yearPts = (u['yearPoints'] ?? 0) as int;
-                final lifetime = (u['lifetimePts'] ?? 0) as int; // kept, not shown separately
                 final curTier = _currentTier(tiers, yearPts);
                 final nextThresh = _nextThreshold(tiers, yearPts);
                 final toNext = nextThresh == null ? 0 : (nextThresh - yearPts);
@@ -184,7 +201,7 @@ class _HomeTab extends StatelessWidget {
 
                 return CustomScrollView(
                   slivers: [
-                    // Greeting line (UPDATED: Hello + name)
+                    // Greeting line: Hello + name
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
@@ -194,8 +211,8 @@ class _HomeTab extends StatelessWidget {
                             Text(
                               'Hello,',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black.withOpacity(0.6),
+                                color: Colors.black.withOpacity(.55),
+                                fontSize: 13,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -204,7 +221,7 @@ class _HomeTab extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 22,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -310,20 +327,22 @@ class _PosterCarouselState extends State<_PosterCarousel> {
         .orderBy('priority', descending: true)
         .snapshots()
         .map(
-          (s) => s.docs
-          .where((d) {
-        final m = (d.data() as Map<String, dynamic>? ?? {});
-        final Timestamp? startsAt = m['startsAt'];
-        final Timestamp? endsAt = m['endsAt'];
-        final afterStart =
-            (startsAt == null) || (startsAt.compareTo(now) <= 0);
-        final beforeEnd =
-            (endsAt == null) || (endsAt.compareTo(now) >= 0);
-        return afterStart && beforeEnd;
-      })
-          .map(_Poster.fromDoc)
-          .where((p) => p.title.isNotEmpty && p.imageUrl.isNotEmpty)
-          .toList(),
+          (s) {
+        return s.docs
+            .where((d) {
+          final m = (d.data() as Map<String, dynamic>? ?? {});
+          final Timestamp? startsAt = m['startsAt'];
+          final Timestamp? endsAt = m['endsAt'];
+          final afterStart =
+              (startsAt == null) || (startsAt.compareTo(now) <= 0);
+          final beforeEnd =
+              (endsAt == null) || (endsAt.compareTo(now) >= 0);
+          return afterStart && beforeEnd;
+        })
+            .map(_Poster.fromDoc)
+            .where((p) => p.title.isNotEmpty && p.imageUrl.isNotEmpty)
+            .toList();
+      },
     );
   }
 
@@ -367,8 +386,10 @@ class _PosterCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child:
-            CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover),
+            child: CachedNetworkImage(
+              imageUrl: item.imageUrl,
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
             child: DecoratedBox(
@@ -377,8 +398,8 @@ class _PosterCard extends StatelessWidget {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    Colors.black.withValues(alpha: .55),
-                    Colors.black.withValues(alpha: .05),
+                    Colors.black.withOpacity(.55),
+                    Colors.black.withOpacity(.05),
                   ],
                 ),
               ),
@@ -409,7 +430,7 @@ class _PosterCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: .85),
+                            color: Colors.white.withOpacity(.85),
                           ),
                         ),
                     ],
@@ -418,7 +439,7 @@ class _PosterCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 TextButton(
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.black.withValues(alpha: .25),
+                    backgroundColor: Colors.black.withOpacity(.25),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -436,34 +457,6 @@ class _PosterCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// =========================
-/// Scan tab (OLD – now unused but you can delete if you want)
-/// =========================
-class _ScanTab extends StatelessWidget {
-  const _ScanTab();
-
-  @override
-  Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'guest';
-    final code = 'TKO:$uid';
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Membership QR',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          QrImageView(data: code, size: 240),
-          const SizedBox(height: 10),
-          const Text('Show at checkout to apply your tier benefits.'),
         ],
       ),
     );
@@ -1287,7 +1280,7 @@ class _PerkTile extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: c.withValues(alpha: .12),
+              color: c.withOpacity(.12),
             ),
             child: Icon(
               unlocked ? Icons.verified_rounded : Icons.lock_clock_rounded,
@@ -1307,7 +1300,7 @@ class _PerkTile extends StatelessWidget {
                   Text(
                     perk.description,
                     style: TextStyle(
-                      color: Colors.black.withValues(alpha: .7),
+                      color: Colors.black.withOpacity(.7),
                     ),
                   ),
                 Text(
